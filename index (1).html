@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reservoir Routing Panel — Inflow/Outflow Hydrograph</title>
+<meta name="author" content="Asep Hidayatulloh">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0A0F14;
+    --panel: #0F161C;
+    --panel-raised: #141E27;
+    --bezel: #070B0F;
+    --line: #223039;
+    --grid: rgba(45,167,191,0.08);
+    --text: #E8EDF2;
+    --text-dim: #85949F;
+    --text-faint: #4B5B65;
+    --inflow: #5B9BF0;
+    --outflow: #E8825C;
+    --accent: #F2B33D;
+    --accent-dim: #7A5D22;
+    --good: #3FC98A;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Oswald', sans-serif;
+    --sans: 'Inter', sans-serif;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 15% -10%, #0F1B22 0%, transparent 55%),
+      radial-gradient(ellipse at 100% 0%, #101820 0%, transparent 45%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 28px 20px 60px;
+  }
+
+  .wrap{ max-width: 1220px; margin: 0 auto; }
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand-eyebrow{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+  h1{
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(24px, 3.6vw, 34px);
+    margin: 0;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+  h1 span{ color: var(--text-dim); font-weight: 400; text-transform: none; font-family: var(--sans); font-size: 0.55em; display:block; margin-top:4px; letter-spacing: 0; }
+  .status-pill{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 7px 12px;
+    border-radius: 3px;
+  }
+  .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--good);
+    box-shadow: 0 0 6px var(--good), 0 0 12px var(--good);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* ---------- Layout ---------- */
+  .grid{
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+  }
+  @media (max-width: 900px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Chart bezel ---------- */
+  .scope{
+    background: var(--bezel);
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid #0A0F13;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 20px 40px -20px rgba(0,0,0,0.6);
+  }
+  .scope-screen{
+    position: relative;
+    background: #0B1116;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #0C1319;
+  }
+  canvas#chart{ display:block; width: 100%; height: 360px; }
+
+  .scope-label-row{
+    display:flex; justify-content: space-between; align-items:center;
+    padding: 10px 6px 2px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.06em;
+  }
+  .legend{ display:flex; gap:16px; flex-wrap: wrap; }
+  .legend-item{ display:flex; align-items:center; gap:6px; }
+  .swatch{ width:14px; height:3px; border-radius:1px; }
+
+  /* ---------- Gauge row (signature element) ---------- */
+  .gauges{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .gauge-card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px 14px;
+    display:flex;
+    align-items:center;
+    gap: 14px;
+  }
+  .gauge-card canvas{ width: 88px; height: 56px; flex-shrink:0; }
+  .gauge-text .glabel{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .gauge-text .gval{
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .gauge-text .gunit{ font-size: 12px; color: var(--text-dim); font-weight: 400; }
+  .gauge-inflow .gval{ color: var(--inflow); }
+  .gauge-outflow .gval{ color: var(--outflow); }
+
+  /* ---------- Control rack ---------- */
+  .rack{ display:flex; flex-direction:column; gap: 14px; }
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 16px 18px;
+  }
+  .panel-title{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel-title::before{
+    content:'';
+    width: 3px; height: 12px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+
+  .field{ margin-bottom: 14px; }
+  .field:last-child{ margin-bottom: 0; }
+  .field-head{
+    display:flex; justify-content: space-between; align-items:baseline;
+    margin-bottom: 6px;
+  }
+  .field-name{ font-size: 12.5px; color: var(--text-dim); }
+  .field-val{ font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+
+  input[type=range]{
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #241A05;
+    cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(242,179,61,0.14);
+  }
+  input[type=range]::-moz-range-thumb{
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #241A05;
+    cursor: pointer;
+  }
+
+  /* Time stepper */
+  .stepper{
+    display:flex; align-items:stretch;
+    background: var(--panel-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .stepper-display{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 10px 8px;
+  }
+  .stepper-display .k{
+    font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--accent);
+    line-height:1;
+  }
+  .stepper-display .t{
+    font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); margin-top:4px;
+  }
+  .stepper-btns{ display:flex; flex-direction:column; width: 46px; border-left: 1px solid var(--line); }
+  .stepper-btns button{
+    flex:1;
+    background: var(--panel);
+    border: none;
+    border-bottom: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .stepper-btns button:last-child{ border-bottom:none; }
+  .stepper-btns button:hover{ background: #1B2731; color: var(--accent); }
+  .stepper-btns button:active{ background: var(--accent-dim); }
+
+  .row-btns{ display:flex; gap:8px; margin-top: 12px; }
+  .btn{
+    flex:1;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 9px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+    background: var(--panel-raised);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .btn:hover{ border-color: var(--accent-dim); color: var(--text); }
+  .btn.primary{
+    background: linear-gradient(180deg, #2B2308, #1D1704);
+    border-color: var(--accent-dim);
+    color: var(--accent);
+  }
+  .btn.primary.playing{
+    background: linear-gradient(180deg, #142219, #0D1710);
+    border-color: #275C43;
+    color: var(--good);
+  }
+  .btn.ghost{ background: transparent; }
+
+  /* Formula card */
+  .formula-card{
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 2;
+    color: var(--text-dim);
+  }
+  .formula-card b{ color: var(--text); font-weight: 600; }
+  .formula-card .hl{ color: var(--inflow); }
+  .formula-card .hl2{ color: var(--outflow); }
+
+  .stat-strip{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .stat{ background: var(--panel-raised); padding: 10px 12px; }
+  .stat .l{ font-family: var(--mono); font-size: 9.5px; letter-spacing:0.1em; text-transform:uppercase; color: var(--text-faint); margin-bottom:4px;}
+  .stat .v{ font-family: var(--mono); font-size: 13px; color: var(--text); }
+
+  footer{
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    display:flex; justify-content: space-between; flex-wrap:wrap; gap:10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce){ .dot{ animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="brand-eyebrow">Asep Hidayatulloh &middot; Simulation No. 01</p>
+      <h1>Storage Routing Panel<span>Inflow &ndash; Outflow Hydrograph Simulator</span></h1>
+    </div>
+    <div class="status-pill"><span class="dot"></span><span id="statusText">Live — Running</span></div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT: CHART + GAUGES -->
+    <div>
+      <div class="scope">
+        <div class="scope-screen">
+          <canvas id="chart" width="1600" height="720"></canvas>
+        </div>
+        <div class="scope-label-row">
+          <div class="legend">
+            <div class="legend-item"><span class="swatch" style="background:var(--inflow)"></span>I(t) — Inflow</div>
+            <div class="legend-item"><span class="swatch" style="background:var(--outflow)"></span>O(t) — Outflow</div>
+          </div>
+          <div>GAUGE STA-07</div>
+        </div>
+      </div>
+
+      <div class="gauges">
+        <div class="gauge-card gauge-inflow">
+          <canvas id="gaugeI" width="220" height="140"></canvas>
+          <div class="gauge-text">
+            <div class="glabel">Inflow now</div>
+            <div class="gval" id="gvalI">0.00 <span class="gunit">m&sup3;/s</span></div>
+          </div>
+        </div>
+        <div class="gauge-card gauge-outflow">
+          <canvas id="gaugeO" width="220" height="140"></canvas>
+          <div class="gauge-text">
+            <div class="glabel">Outflow now</div>
+            <div class="gval" id="gvalO">0.00 <span class="gunit">m&sup3;/s</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: CONTROL RACK -->
+    <div class="rack">
+
+      <div class="panel">
+        <p class="panel-title">Review time</p>
+        <div class="stepper">
+          <div class="stepper-display">
+            <div class="k" id="tBig">0.00</div>
+            <div class="t" id="tSmall">hr</div>
+          </div>
+          <div class="stepper-btns">
+            <button id="btnUp" aria-label="Step forward">&#9650;</button>
+            <button id="btnDown" aria-label="Step backward">&#9660;</button>
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <input type="range" id="reviewTime" min="0" max="4.8" step="0.05" value="2.9">
+        </div>
+        <div class="row-btns">
+          <button class="btn primary playing" id="btnPlay">&#9654; Play</button>
+          <button class="btn ghost" id="btnReset">Reset</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Reservoir parameters</p>
+        <div class="field">
+          <div class="field-head"><span class="field-name">Peak discharge (I<sub>p</sub>)</span><span class="field-val" id="vIp">60</span></div>
+          <input type="range" id="Ip" min="10" max="200" step="1" value="60">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-name">Time base (&tau;)</span><span class="field-val" id="vThau">3.80</span></div>
+          <input type="range" id="thau" min="1" max="10" step="0.1" value="3.8">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-name">Routing coefficient (k)</span><span class="field-val" id="vK">1.80</span></div>
+          <input type="range" id="k" min="0.1" max="5" step="0.1" value="1.8">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-name">Time step (dt)</span><span class="field-val" id="vDt">0.050</span></div>
+          <input type="range" id="dt" min="0.01" max="0.2" step="0.01" value="0.05">
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Hydrograph formula</p>
+        <div class="formula-card">
+          <span class="hl">I(t) = (I<sub>p</sub>/2)[1&minus;cos(&alpha;t)]</span><br>
+          <span class="hl2">O(t) = e<sup>&minus;kt</sup> &int; k&middot;I(t)&middot;e<sup>kt</sup> dt</span><br>
+          &alpha; = 2&pi; / &tau;
+        </div>
+        <div class="stat-strip">
+          <div class="stat"><div class="l">Alpha (&alpha;)</div><div class="v" id="statAlpha">1.653</div></div>
+          <div class="stat"><div class="l">Peak inflow t</div><div class="v" id="statPeakI">1.90 hr</div></div>
+          <div class="stat"><div class="l">Peak outflow t</div><div class="v" id="statPeakO">2.60 hr</div></div>
+          <div class="stat"><div class="l">t range</div><div class="v" id="statRange">0–4.8 hr</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <span>Raised-cosine inflow pulse routed through a linear-reservoir outflow kernel.</span>
+    <span>Built by Asep Hidayatulloh — HTML5 Canvas, runs entirely in-browser, no dependencies.</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const chartCanvas = document.getElementById('chart');
+  const ctx = chartCanvas.getContext('2d');
+  const W = chartCanvas.width, H = chartCanvas.height;
+
+  const gaugeICanvas = document.getElementById('gaugeI');
+  const gaugeOCanvas = document.getElementById('gaugeO');
+  const gctxI = gaugeICanvas.getContext('2d');
+  const gctxO = gaugeOCanvas.getContext('2d');
+
+  const state = {
+    Ip: 60, thau: 3.8, k: 1.8, dt: 0.05,
+    reviewTime: 2.9,
+    playing: false
+  };
+
+  let data = null; // {ts, I, O, alpha, tEnd, idxPeakI, idxPeakO}
+
+  const els = {
+    Ip: document.getElementById('Ip'), vIp: document.getElementById('vIp'),
+    thau: document.getElementById('thau'), vThau: document.getElementById('vThau'),
+    k: document.getElementById('k'), vK: document.getElementById('vK'),
+    dt: document.getElementById('dt'), vDt: document.getElementById('vDt'),
+    reviewTime: document.getElementById('reviewTime'),
+    tBig: document.getElementById('tBig'), tSmall: document.getElementById('tSmall'),
+    statAlpha: document.getElementById('statAlpha'),
+    statPeakI: document.getElementById('statPeakI'),
+    statPeakO: document.getElementById('statPeakO'),
+    statRange: document.getElementById('statRange'),
+    gvalI: document.getElementById('gvalI'), gvalO: document.getElementById('gvalO'),
+    statusText: document.getElementById('statusText'),
+    btnPlay: document.getElementById('btnPlay')
+  };
+
+  function computeHydrograph(){
+    const Ip = state.Ip, thau = state.thau, k = state.k, dt = state.dt;
+    const tEnd = Math.max(4, thau + 1); // auto-extend so the curve never gets clipped
+    const alpha = 2 * Math.PI / thau;
+
+    const ts = [];
+    for(let t = 0; t <= tEnd + 1e-9; t += dt) ts.push(Math.round(t*1e6)/1e6);
+
+    const I = ts.map(t => t <= thau ? (Ip/2) * (1 - Math.cos(alpha*t)) : 0);
+
+    const integrand = ts.map((t,i) => k * I[i] * Math.exp(k*t));
+    const integral = [0];
+    for(let i=1; i<ts.length; i++){
+      const dtI = ts[i] - ts[i-1];
+      integral.push(integral[i-1] + (integrand[i] + integrand[i-1]) / 2 * dtI);
+    }
+    const O = ts.map((t,i) => integral[i] / Math.exp(k*t));
+
+    let idxPeakI = 0, idxPeakO = 0;
+    for(let i=1;i<I.length;i++) if(I[i] > I[idxPeakI]) idxPeakI = i;
+    for(let i=1;i<O.length;i++) if(O[i] > O[idxPeakO]) idxPeakO = i;
+
+    return { ts, I, O, alpha, tEnd, idxPeakI, idxPeakO, thau };
+  }
+
+  function nearestIndex(ts, t){
+    let lo=0, hi=ts.length-1;
+    if(t<=ts[0]) return 0;
+    if(t>=ts[hi]) return hi;
+    // linear scan is fine at this resolution
+    let best=0, bestd=Infinity;
+    for(let i=0;i<ts.length;i++){
+      const d = Math.abs(ts[i]-t);
+      if(d<bestd){bestd=d;best=i;}
+    }
+    return best;
+  }
+
+  function syncLabels(){
+    els.vIp.textContent = state.Ip.toFixed(0);
+    els.vThau.textContent = state.thau.toFixed(2);
+    els.vK.textContent = state.k.toFixed(2);
+    els.vDt.textContent = state.dt.toFixed(3);
+    els.tBig.textContent = state.reviewTime.toFixed(2);
+    els.tSmall.textContent = 'hr';
+    els.statAlpha.textContent = data.alpha.toFixed(3);
+    els.statPeakI.textContent = data.ts[data.idxPeakI].toFixed(2) + ' hr';
+    els.statPeakO.textContent = data.ts[data.idxPeakO].toFixed(2) + ' hr';
+    els.statRange.textContent = '0–' + data.tEnd.toFixed(1) + ' hr';
+  }
+
+  function rebuild(){
+    data = computeHydrograph();
+    // keep review time slider range in sync with tEnd
+    els.reviewTime.max = data.tEnd;
+    if(state.reviewTime > data.tEnd) state.reviewTime = data.tEnd;
+    els.reviewTime.value = state.reviewTime;
+    syncLabels();
+    drawAll();
+  }
+
+  // ---------- Chart drawing ----------
+  function drawChart(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#0B1116';
+    ctx.fillRect(0,0,W,H);
+
+    const padL = 70, padR = 30, padT = 30, padB = 50;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+
+    const maxQ = Math.max(...data.I, ...data.O) * 1.15;
+    const tEnd = data.tEnd;
+
+    function px(t){ return padL + (t/tEnd) * plotW; }
+    function py(q){ return padT + plotH - (q/maxQ) * plotH; }
+
+    // grid
+    ctx.strokeStyle = 'rgba(45,167,191,0.10)';
+    ctx.lineWidth = 1;
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#4B5B65';
+    const xTicks = 8, yTicks = 6;
+    for(let i=0;i<=xTicks;i++){
+      const t = (tEnd/xTicks)*i;
+      const x = px(t);
+      ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT+plotH); ctx.stroke();
+      ctx.fillText(t.toFixed(1), x-10, padT+plotH+18);
+    }
+    for(let j=0;j<=yTicks;j++){
+      const q = (maxQ/yTicks)*j;
+      const y = py(q);
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL+plotW, y); ctx.stroke();
+      ctx.fillText(q.toFixed(0), padL-32, y+4);
+    }
+    ctx.fillText('Time (hr)', padL+plotW/2-25, H-10);
+    ctx.save();
+    ctx.translate(18, padT+plotH/2+20);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText('Q (m3/s)', 0,0);
+    ctx.restore();
+
+    // curves
+    function drawCurve(arr, color, glow, width){
+      ctx.beginPath();
+      ctx.shadowColor = color; ctx.shadowBlur = glow;
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      for(let i=0;i<data.ts.length;i++){
+        const x = px(data.ts[i]), y = py(arr[i]);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    drawCurve(data.I, getVar('--inflow'), 8, 2.2);
+    drawCurve(data.O, getVar('--outflow'), 8, 2.2);
+
+    // review-time marker (outflow dot follows the slider all the way)
+    const idx = nearestIndex(data.ts, state.reviewTime);
+    const tMark = data.ts[idx];
+    const xMark = px(tMark);
+    ctx.strokeStyle = 'rgba(232,237,242,0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(xMark, padT); ctx.lineTo(xMark, padT+plotH); ctx.stroke();
+    ctx.setLineDash([]);
+
+    function dot(x, q, color){
+      const y = py(q);
+      ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2);
+      ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 12; ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Inflow dot freezes at t = thau (where inflow first hits zero) instead of
+    // sliding further along the zero baseline once the slider passes thau.
+    const tInflowMark = Math.min(tMark, data.thau);
+    const idxInflow = nearestIndex(data.ts, tInflowMark);
+    dot(px(tInflowMark), data.I[idxInflow], getVar('--inflow'));
+
+    // Outflow dot always tracks the actual review time.
+    dot(xMark, data.O[idx], getVar('--outflow'));
+
+    // peak labels
+    ctx.fillStyle = getVar('--inflow');
+    ctx.font = '600 12px Inter, sans-serif';
+    ctx.fillText('Inflow', px(data.ts[data.idxPeakI])-40, py(data.I[data.idxPeakI])-14);
+    ctx.fillStyle = getVar('--outflow');
+    ctx.fillText('Outflow', px(data.ts[data.idxPeakO])+8, py(data.O[data.idxPeakO])-8);
+
+    return { I_point: data.I[idxInflow], O_point: data.O[idx], t: tMark };
+  }
+
+  function getVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  // ---------- Gauge drawing (signature element) ----------
+  function drawGauge(gctx, canvas, value, maxVal, color){
+    const w = canvas.width, h = canvas.height;
+    gctx.clearRect(0,0,w,h);
+    const cx = w/2, cy = h - 8, r = Math.min(w/2, h) - 10;
+
+    // background arc
+    gctx.beginPath();
+    gctx.arc(cx, cy, r, Math.PI, 0, false);
+    gctx.lineWidth = 12;
+    gctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    gctx.stroke();
+
+    // value arc
+    const frac = Math.max(0, Math.min(1, value / maxVal));
+    gctx.beginPath();
+    gctx.arc(cx, cy, r, Math.PI, Math.PI + Math.PI*frac, false);
+    gctx.lineWidth = 12;
+    gctx.strokeStyle = color;
+    gctx.shadowColor = color;
+    gctx.shadowBlur = 10;
+    gctx.stroke();
+    gctx.shadowBlur = 0;
+
+    // needle
+    const angle = Math.PI + Math.PI*frac;
+    const nx = cx + Math.cos(angle) * (r-16);
+    const ny = cy + Math.sin(angle) * (r-16);
+    gctx.beginPath();
+    gctx.moveTo(cx,cy); gctx.lineTo(nx,ny);
+    gctx.lineWidth = 2;
+    gctx.strokeStyle = '#E8EDF2';
+    gctx.stroke();
+    gctx.beginPath();
+    gctx.arc(cx,cy,3,0,Math.PI*2);
+    gctx.fillStyle = '#E8EDF2';
+    gctx.fill();
+
+    // ticks
+    gctx.font = '9px "IBM Plex Mono", monospace';
+    gctx.fillStyle = '#4B5B65';
+    gctx.fillText('0', cx-r-2, cy+12);
+    gctx.fillText(maxVal.toFixed(0), cx+r-14, cy+12);
+  }
+
+  function drawAll(){
+    const point = drawChart();
+    const maxQ = Math.max(...data.I, ...data.O) * 1.15;
+    drawGauge(gctxI, gaugeICanvas, point.I_point, maxQ, getVar('--inflow'));
+    drawGauge(gctxO, gaugeOCanvas, point.O_point, maxQ, getVar('--outflow'));
+    els.gvalI.innerHTML = point.I_point.toFixed(2) + ' <span class="gunit">m&sup3;/s</span>';
+    els.gvalO.innerHTML = point.O_point.toFixed(2) + ' <span class="gunit">m&sup3;/s</span>';
+  }
+
+  // ---------- Event bindings ----------
+  els.Ip.addEventListener('input', e => { state.Ip = parseFloat(e.target.value); rebuild(); });
+  els.thau.addEventListener('input', e => { state.thau = parseFloat(e.target.value); rebuild(); });
+  els.k.addEventListener('input', e => { state.k = parseFloat(e.target.value); rebuild(); });
+  els.dt.addEventListener('input', e => { state.dt = parseFloat(e.target.value); rebuild(); });
+  els.reviewTime.addEventListener('input', e => { state.reviewTime = parseFloat(e.target.value); syncLabels(); drawAll(); });
+
+  document.getElementById('btnUp').addEventListener('click', () => {
+    state.reviewTime = Math.min(data.tEnd, state.reviewTime + state.dt);
+    els.reviewTime.value = state.reviewTime;
+    syncLabels(); drawAll();
+  });
+  document.getElementById('btnDown').addEventListener('click', () => {
+    state.reviewTime = Math.max(0, state.reviewTime - state.dt);
+    els.reviewTime.value = state.reviewTime;
+    syncLabels(); drawAll();
+  });
+  document.getElementById('btnReset').addEventListener('click', () => {
+    state.reviewTime = 0;
+    els.reviewTime.value = 0;
+    syncLabels(); drawAll();
+  });
+
+  els.btnPlay.addEventListener('click', () => {
+    state.playing = !state.playing;
+    els.btnPlay.innerHTML = state.playing ? '&#10073;&#10073; Pause' : '&#9654; Play';
+    els.btnPlay.classList.toggle('playing', state.playing);
+    els.statusText.textContent = state.playing ? 'Live — Running' : 'Paused';
+  });
+
+  // ---------- Animation loop ----------
+  let lastFrame = performance.now();
+  let acc = 0;
+  function loop(now){
+    const delta = (now - lastFrame) / 1000;
+    lastFrame = now;
+    if(state.playing){
+      acc += delta;
+      const stepTime = 1/30;
+      while(acc >= stepTime){
+        state.reviewTime += state.dt * 0.6;
+        if(state.reviewTime > data.tEnd) state.reviewTime = 0;
+        acc -= stepTime;
+      }
+      els.reviewTime.value = state.reviewTime;
+      syncLabels();
+    }
+    drawAll();
+    requestAnimationFrame(loop);
+  }
+
+  rebuild();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
