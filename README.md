@@ -1,6 +1,6 @@
 # Inflow and Outflow Hydrograph Simulation
 
-A Python simulation of an inflow–outflow hydrograph, converted from an Excel-based hydrological model into an interactive Jupyter/Google Colab notebook.
+A Python simulation of an inflow–outflow hydrograph.
 
 The model demonstrates how incoming discharge (**inflow**) is routed through a storage system to produce a delayed, attenuated release (**outflow**), and visualizes both as hydrographs over time.
 
@@ -8,12 +8,21 @@ The model demonstrates how incoming discharge (**inflow**) is routed through a s
 
 ## Overview
 
-This project reproduces a reservoir/channel routing hydrograph model originally built in Excel, using Python for computation and Matplotlib for visualization. Given a peak discharge and a set of shape/routing parameters, the model computes:
+This project reproduces a reservoir/channel routing hydrograph model using Python for computation and Matplotlib for visualization. Given a peak discharge and a set of shape/routing parameters, the model computes:
 
 - **I(t)** — the inflow hydrograph, following a `[1 - cos(αt)]·e^(kt)` shape, normalized so its peak exactly equals the specified peak discharge.
 - **O(t)** — the outflow hydrograph, obtained by routing the inflow through a linear reservoir/channel storage model (numerical integration).
 
-An interactive widget lets you adjust the input parameters and see the hydrographs update in real time — similar to pressing **F9** to recalculate in the original Excel sheet.
+An interactive widget lets you adjust the input parameters and see the hydrographs update in real time.
+
+## Live Demo
+
+Try the interactive hydrograph simulator here:
+
+👉 **https://asepmhidayatulloh.github.io/Inflow_Outflow_Hydrograph/**
+
+
+
 
 ## Formulas
 
